@@ -34,7 +34,7 @@ export interface Message {
 }
 
 export interface MessageContent {
-    content_type: "text" | "code" | "tether_browsing_display" | "tether_quote" | "image_asset_pointer" | "multimodal_text" | "" | string;
+    content_type: "text" | "code" | "tether_browsing_display" | "tether_quote" | "image_asset_pointer" | "multimodal_text" | "thoughts" | "execution_output" | "reasoning_recap" | string;
     parts?: any[];
     result?: string;
     asset_pointer?: string;
