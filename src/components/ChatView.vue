@@ -1,25 +1,25 @@
 <template>
-    <div class="chat">
-        <Message v-for="(messageId, index) in chatRoute"
-                 :key="messageId" :message="chatMapping[messageId]"
-                 @branchChange="payload => updRoute(payload.choice)"
-                 :next-id="findNextNodeId(index)"/>
-    </div>
+    <Message v-for="(messageId, index) in curRoute"
+             :key="messageId" :message-node="chatMapping[messageId]"
+             @branch-change="payload => updRoute(payload.choice)"
+             :next-id="findNextNodeId(index)"/>
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
+import {onMounted, onUpdated, ref, watch} from 'vue';
 import Message from "@/components/Message.vue";
+import type {MessageNode} from "@/types.ts";
 
 const props = defineProps<{
-    chatMapping: any
+    currentNodeId: string;
+    chatMapping: Record<string, MessageNode>;
 }>();
 
-const curNode = ref<string | null>(null)
+const curNodeId = ref<string | null>(null)
 const curRoute = ref<string[]>([])
 
 const setCurNode = (value: string) => {
-    curNode.value = value;
+    curNodeId.value = value;
     curRoute.value = chatRoute(value);
 }
 
@@ -47,14 +47,18 @@ const updRoute = (routeNodeId: string) => {
 }
 
 const findNextNodeId = (index: number) => {
-    console.log(index);
-    console.log(curRoute.value.length > (index + 1) ? curRoute.value[index + 1] : null);
+    // console.log(index);
+    // console.log(curRoute.value.length > (index + 1) ? curRoute.value[index + 1] : null);
     return curRoute.value.length > (index + 1) ? curRoute.value[index + 1] : null
 }
 
-onMounted(() => {
-    curNode.value = props.chatMapping.current_node;
-})
+watch(() => props.currentNodeId, (newVal) => {
+  setCurNode(newVal);
+}, { immediate: true });
+
+// onMounted(() => {
+//     setCurNode(props.currentNodeId);
+// })
 </script>
 
 <style scoped>
