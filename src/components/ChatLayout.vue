@@ -2,14 +2,6 @@
     <div
         class="relative h-screen w-screen overflow-hidden bg-white dark:bg-gray-900 text-black dark:text-white transition-colors duration-300">
 
-        <!-- Floating Theme Button -->
-        <button
-            class="fixed top-4 right-4 z-50 bg-gray-200 dark:bg-gray-800 text-black dark:text-white border rounded-full p-2 shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-            @click="toggleTheme"
-        >
-            🌓
-        </button>
-
         <!-- Restore Sidebar Button -->
         <button
             v-if="!showSidebar"
@@ -98,10 +90,8 @@ const toggleSidebar = () => {
 }
 
 // THEME SUPPORT
-const theme = ref<'light' | 'dark'>('light')
-
 const applyTheme = () => {
-    if (theme.value === 'dark') {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.documentElement.classList.add('dark')
     } else {
         document.documentElement.classList.remove('dark')
@@ -110,22 +100,22 @@ const applyTheme = () => {
 
 const detectSystemTheme = () => {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    theme.value = prefersDark ? 'dark' : 'light'
-    applyTheme()
-}
-
-const toggleTheme = () => {
-    theme.value = theme.value === 'dark' ? 'light' : 'dark'
     applyTheme()
 }
 
 // Handle system theme change dynamically
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    theme.value = e.matches ? 'dark' : 'light'
     applyTheme()
 })
 
+// Initial theme detection
+onMounted(() => {
+    detectSystemTheme()
+})
+
 // ZIP Handling
+const assetMap = new Map<string, Blob>() // Store all assets from zip
+
 const handleFileChange = async (e: Event) => {
     const files = (e.target as HTMLInputElement).files
     if (files && files.length > 0) {
@@ -139,8 +129,6 @@ const handleDrop = async (e: DragEvent) => {
     }
 }
 
-const assetMap = new Map<string, Blob>() // Store all assets from zip
-
 const resolveAssetPath = (prefix: string): string | undefined => {
     for (const [filename, blob] of assetMap.entries()) {
         if (filename.startsWith(prefix)) {
@@ -149,7 +137,6 @@ const resolveAssetPath = (prefix: string): string | undefined => {
     }
     return undefined
 }
-
 
 const loadZip = async (file: File) => {
     try {
@@ -183,11 +170,6 @@ const loadZip = async (file: File) => {
         alert('Failed to read ZIP file. Make sure it contains a valid conversations.json.')
     }
 }
-
-// Initial theme detection
-onMounted(() => {
-    detectSystemTheme()
-})
 </script>
 
 <style scoped>
