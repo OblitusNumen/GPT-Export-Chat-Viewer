@@ -1,52 +1,53 @@
 <template>
-    <div v-if="messageNode">
-        <div v-if="messageNode.message !== null">
-            <div
-                v-html="renderedMessage"
-                :class="[
-          'message px-4 py-2 rounded-lg max-w-3xl break-words',
-          messageNode.message.author.role === 'user'
-            ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
-            : 'self-start bg-gray-200 dark:bg-gray-700 text-black dark:text-white'
-        ]"
-            />
-        </div>
+    <div v-if="messageNode" class="flex flex-col space-y-2 px-4">
+        <div
+            v-if="messageNode.message !== null"
+            :class="[
+        'message max-w-3xl rounded-xl p-4 text-base whitespace-pre-wrap leading-relaxed',
+        messageNode.message.author.role === 'user'
+          ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
+          : 'self-start bg-gray-100 dark:bg-gray-800 text-black dark:text-white'
+      ]"
+            v-html="renderedMessage"
+        />
 
-        <div v-if="messageNode.children.length > 1" class="flex items-center space-x-4 mt-2">
+        <div
+            v-if="messageNode.children.length > 1"
+            class="flex items-center justify-center space-x-4 mt-3"
+        >
             <button
                 @click="emit('branchChange', { choice: messageNode.children[currentIndex - 1] })"
                 :disabled="nextId === messageNode.children[0]"
-                class="flex items-center justify-center p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition dark:bg-gray-700 dark:hover:bg-gray-600"
+                class="chat-nav-btn"
                 aria-label="Previous"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
+                <ChevronLeftIcon/>
             </button>
 
-            <span class="text-gray-700 dark:text-gray-300 font-medium select-none">
+            <span class="text-gray-600 dark:text-gray-300 font-medium">
         {{ currentIndex + 1 }} / {{ messageNode.children.length }}
       </span>
 
             <button
                 @click="emit('branchChange', { choice: messageNode.children[currentIndex + 1] })"
                 :disabled="nextId === messageNode.children[messageNode.children.length - 1]"
-                class="flex items-center justify-center p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition dark:bg-gray-700 dark:hover:bg-gray-600"
+                class="chat-nav-btn"
                 aria-label="Next"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon/>
             </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import {marked} from 'marked'
 import {computed, ref, watch} from 'vue'
+import type {Tokens} from 'marked'
+import {marked, Renderer} from 'marked'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
+
+import {ChevronLeftIcon, ChevronRightIcon} from 'lucide-vue-next'
 import type {Message, MessageContent, MessageNode} from '@/types.ts'
 
 const props = defineProps<{
@@ -99,14 +100,12 @@ async function renderMessagePart(content: MessageContent, message: Message): Pro
                 src = props.getAssetUrl(id)
             }
 
-            if (src) {
-                return `<img src="${sanitizeUrl(src)}" style="max-height:50vh; max-width:100%; margin-top:10px;" alt="Image" />`
-            } else {
-                return `<div style="color:red">[Missing image: ${id}]</div>`
-            }
+            return src
+                ? `<img src="${sanitizeUrl(src)}" class="max-h-[50vh] w-auto mt-4 rounded-lg shadow" alt="Image" />`
+                : `<div class="text-red-500">[Missing image: ${id}]</div>`
         }
         default:
-            return `<div style="color:gray;">[Unsupported content: ${content.content_type}]</div>`
+            return `<div class="text-gray-400">[Unsupported content: ${content.content_type}]</div>`
     }
 }
 
@@ -119,21 +118,52 @@ function sanitizeUrl(url: string): string {
 }
 
 function sanitizeText(text: string): string {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
+    const div = document.createElement("div")
+    div.textContent = text
+    return div.innerHTML
 }
 
 async function parseMarked(content: string): Promise<string> {
-    return marked.parse(sanitizeText(content));
+    const renderer = new Renderer()
+
+    renderer.code = ({text, lang, escaped}: Tokens.Code): string => {
+        const validLang = lang && hljs.getLanguage(lang)
+        const highlighted = validLang
+            ? hljs.highlight(text, {language: lang}).value
+            : hljs.highlightAuto(text).value
+
+        return `<pre><code class="hljs ${lang ?? ''}">${highlighted}</code></pre>`
+    }
+
+    marked.use({renderer})
+
+    return marked.parse(sanitizeText(content))
 }
+
 </script>
 
 <style scoped>
-/* In your global CSS or scoped style */
 .message * {
-    word-break: break-word; /* good fallback */
-    overflow-wrap: break-word; /* newer standard */
-    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+pre {
+    background-color: #0d1117;
+    color: #c9d1d9;
+    padding: 1em;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+code {
+    font-family: 'Fira Code', monospace;
+}
+
+.chat-nav-btn {
+    @apply p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition dark:bg-gray-700 dark:hover:bg-gray-600;
 }
 </style>

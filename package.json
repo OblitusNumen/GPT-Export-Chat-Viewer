@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
     "marked": "^15.0.12",
     "primeicons": "^7.0.0",
