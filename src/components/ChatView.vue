@@ -3,12 +3,12 @@
         <div
             class="flex flex-col space-y-4 px-4 py-6 bg-background text-foreground min-h-screen transition-colors">
             <Message
-                v-for="(messageId, index) in curRoute"
+                v-for="(messageId) in curRoute"
                 :key="messageId"
                 :message-node="chatMapping[messageId]"
                 @branch-change="payload => updateRoute(payload.choice)"
-                :next-id="findNextNodeId(index)"
                 :get-asset-url="getAssetUrl"
+                :parent-children="chatMapping[messageId].parent === null ? [] : chatMapping[chatMapping[messageId].parent].children"
             />
         </div>
     </div>
@@ -40,10 +40,6 @@ const setCurNode = (nodeId: string) => {
         current = current.parent ? props.chatMapping[current.parent] : null
     }
     curRoute.value = route
-}
-
-const findNextNodeId = (index: number): string | null => {
-    return curRoute.value[index + 1] || null
 }
 
 const updateRoute = (nodeId: string) => {

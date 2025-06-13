@@ -12,12 +12,12 @@
         />
 
         <div
-            v-if="messageNode.children.length > 1"
+            v-if="parentChildren.length > 1"
             class="flex items-center justify-center space-x-4 mt-3"
         >
             <button
-                @click="emit('branchChange', { choice: messageNode.children[currentIndex - 1] })"
-                :disabled="nextId === messageNode.children[0]"
+                @click="emit('branchChange', { choice: parentChildren[currentIndex - 1] })"
+                :disabled="messageNode.id === parentChildren[0]"
                 class="chat-nav-btn"
                 aria-label="Previous"
             >
@@ -25,12 +25,12 @@
             </button>
 
             <span class="text-gray-600 dark:text-gray-300 font-medium">
-        {{ currentIndex + 1 }} / {{ messageNode.children.length }}
-      </span>
+                {{ currentIndex + 1 }} / {{ parentChildren.length }}
+            </span>
 
             <button
-                @click="emit('branchChange', { choice: messageNode.children[currentIndex + 1] })"
-                :disabled="nextId === messageNode.children[messageNode.children.length - 1]"
+                @click="emit('branchChange', { choice: parentChildren[currentIndex + 1] })"
+                :disabled="messageNode.id === parentChildren[parentChildren.length - 1]"
                 class="chat-nav-btn"
                 aria-label="Next"
             >
@@ -52,8 +52,8 @@ import type {Message, MessageContent, MessageNode} from '@/types.ts'
 
 const props = defineProps<{
     messageNode: MessageNode | undefined
-    nextId: string | null
     getAssetUrl: (filename: string) => string | undefined
+    parentChildren: string[]
 }>()
 
 const emit = defineEmits<{
@@ -63,8 +63,8 @@ const emit = defineEmits<{
 const renderedMessage = ref('')
 
 const currentIndex = computed(() => {
-    if (!props.messageNode || !props.nextId) return 0
-    return props.messageNode.children.indexOf(props.nextId)
+    if (!props.messageNode) return 0
+    return props.parentChildren.indexOf(props.messageNode.id)
 })
 
 watch(
@@ -126,7 +126,7 @@ function sanitizeText(text: string): string {
 async function parseMarked(content: string): Promise<string> {
     const renderer = new Renderer()
 
-    renderer.code = ({text, lang, escaped}: Tokens.Code): string => {
+    renderer.code = ({text, lang}: Tokens.Code): string => {
         const validLang = lang && hljs.getLanguage(lang)
         const highlighted = validLang
             ? hljs.highlight(text, {language: lang}).value
