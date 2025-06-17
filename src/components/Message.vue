@@ -2,15 +2,13 @@
     <div v-if="messageNode" class="flex flex-col space-y-2 px-4">
         <div
             v-if="messageNode.message !== null"
-            :class="[
-        'message max-w-3xl rounded-xl p-4 text-base whitespace-pre-wrap leading-relaxed',
-        messageNode.message.author.role === 'user'
-          ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
-          : 'self-start bg-gray-100 dark:bg-gray-800 text-black dark:text-white'
-      ]"
+            :class="['message max-w-3xl rounded-xl p-4 text-base whitespace-pre-wrap leading-relaxed',
+                messageNode.message.author.role === 'user'
+                ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
+                : 'self-start bg-gray-100 dark:bg-gray-800 text-black dark:text-white'
+            ]"
             v-html="renderedMessage"
         />
-
         <div
             v-if="parentChildren.length > 1"
             class="flex items-center justify-center space-x-4 mt-3"
@@ -84,9 +82,9 @@ async function renderMessagePart(content: MessageContent, message: Message): Pro
         case 'multimodal_text':
             return (await Promise.all(content.parts!.map(p => renderMessagePart(p, message)))).join('')
         case 'text':
-            return (await Promise.all(content.parts!.map(p => parseMarked(p)))).join('')
+            return (await Promise.all(content.parts!.map(p => parseMarked(p, message.author.role !== "user")))).join('')
         case 'tether_browsing_display':
-            return await parseMarked(content.result!)
+            return await parseMarked(content.result!, message.author.role !== "user")
         case 'image_asset_pointer': {
             const id = content.asset_pointer!.replace(/^file-service:\/\//, '').replace(/^sediment:\/\//, '')
             let src: string | undefined
@@ -123,7 +121,9 @@ function sanitizeText(text: string): string {
     return div.innerHTML
 }
 
-async function parseMarked(content: string): Promise<string> {
+async function parseMarked(content: string, markdown: boolean): Promise<string> {
+    if (!markdown) return sanitizeText(content)
+
     const renderer = new Renderer()
 
     renderer.code = ({text, lang}: Tokens.Code): string => {
@@ -137,7 +137,7 @@ async function parseMarked(content: string): Promise<string> {
 
     marked.use({renderer})
 
-    return marked.parse(sanitizeText(content))
+    return marked.parse(content)
 }
 
 </script>

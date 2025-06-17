@@ -186,12 +186,11 @@ const applyTheme = () => {
 }
 
 const detectSystemTheme = () => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     applyTheme()
 }
 
 // Handle system theme change dynamically
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     applyTheme()
 })
 
