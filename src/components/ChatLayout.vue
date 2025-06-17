@@ -79,7 +79,7 @@
                         @click="selectedChat = chat"
                         :class="['p-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700', selectedChat?.id === chat.id ? 'bg-gray-300 dark:bg-gray-700' : '']"
                     >
-                        <span v-html="highlightMatch(chat.title || `Chat ${chat.id}`)"></span>
+                        <span v-html="highlightMatch(chatName(chat))"></span>
                     </li>
                 </ul>
             </div>
@@ -144,10 +144,14 @@ const searchQuery = ref('')
 const sortKey = ref<'create_time' | 'update_time'>('update_time')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
+const chatName = (chat: Conversation) => {
+    return chat.title || `Chat ${chat.id}`
+}
+
 const filteredConversations = computed(() => {
     const query = searchQuery.value.toLowerCase()
     return conversations.value.filter(chat =>
-        (chat.title || `Chat ${chat.id}`).toLowerCase().includes(query)
+        chatName(chat).toLowerCase().includes(query)
     )
 })
 
