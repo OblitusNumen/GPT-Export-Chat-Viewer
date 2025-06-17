@@ -16,20 +16,70 @@
             <!-- Sidebar -->
             <div v-if="showSidebar"
                  class="w-64 h-full bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600 flex flex-col">
-                <div class="p-4 border-b border-gray-300 dark:border-gray-600 flex justify-between items-center">
-                    <span class="font-bold">Chats</span>
-                    <button class="text-sm text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
-                            @click="toggleSidebar">◀
-                    </button>
+                <div class="p-4 border-b border-gray-300 dark:border-gray-600">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold">Chats ({{ conversations.length }})</span>
+                        <button class="text-sm text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
+                                @click="toggleSidebar">◀
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input
+                            v-model="searchQuery"
+                            type="text"
+                            placeholder="Search chats..."
+                            class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-400 dark:placeholder-gray-500 pr-8"
+                        />
+                        <button
+                            v-if="searchQuery"
+                            @click="searchQuery = ''"
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-black dark:hover:text-white text-lg leading-none"
+                            title="Clear search"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-2 text-sm">
+                        <div class="flex items-center gap-1">
+                            <span class="text-gray-600 dark:text-gray-300">Sort by:</span>
+                            <button
+                                :class="['px-2 py-1 rounded', sortKey === 'create_time' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200']"
+                                @click="sortKey = 'create_time'"
+                            >
+                                Created
+                            </button>
+                            <button
+                                :class="['px-2 py-1 rounded', sortKey === 'update_time' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200']"
+                                @click="sortKey = 'update_time'"
+                            >
+                                Updated
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-gray-600 dark:text-gray-300">Order:</span>
+                            <button
+                                :class="['px-2 py-1 rounded', sortOrder === 'asc' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200']"
+                                @click="sortOrder = 'asc'"
+                            >
+                                Asc
+                            </button>
+                            <button
+                                :class="['px-2 py-1 rounded', sortOrder === 'desc' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200']"
+                                @click="sortOrder = 'desc'"
+                            >
+                                Desc
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <ul class="flex-1 overflow-y-auto">
                     <li
-                        v-for="chat in conversations"
+                        v-for="chat in sortedConversations"
                         :key="chat.id"
                         @click="selectedChat = chat"
                         :class="['p-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700', selectedChat?.id === chat.id ? 'bg-gray-300 dark:bg-gray-700' : '']"
                     >
-                        {{ chat.title || `Chat ${chat.id}` }}
+                        <span v-html="highlightMatch(chat.title || `Chat ${chat.id}`)"></span>
                     </li>
                 </ul>
             </div>
@@ -73,7 +123,7 @@
 </template>
 
 <script lang="ts" setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import JSZip from 'jszip'
 import ChatView from '@/components/ChatView.vue'
 import type {Conversation} from '@/types.ts'
@@ -87,6 +137,43 @@ const zipLoaded = ref(false)
 
 const toggleSidebar = () => {
     showSidebar.value = !showSidebar.value
+}
+
+const searchQuery = ref('')
+
+const sortKey = ref<'create_time' | 'update_time'>('update_time')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+
+const filteredConversations = computed(() => {
+    const query = searchQuery.value.toLowerCase()
+    return conversations.value.filter(chat =>
+        (chat.title || `Chat ${chat.id}`).toLowerCase().includes(query)
+    )
+})
+
+const sortedConversations = computed(() => {
+    return [...filteredConversations.value].sort((a, b) => {
+        const timeA = a[sortKey.value] ?? 0
+        const timeB = b[sortKey.value] ?? 0
+        return sortOrder.value === 'asc' ? timeA - timeB : timeB - timeA
+    })
+})
+
+// Utility to escape HTML
+const escapeHTML = (str: string): string =>
+    str.replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+
+// Highlight matched text in chat titles
+const highlightMatch = (title: string): string => {
+    const query = searchQuery.value.trim()
+    if (!query) return escapeHTML(title)
+
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig')
+    return escapeHTML(title).replace(regex, '<mark>$1</mark>')
 }
 
 // THEME SUPPORT
@@ -152,7 +239,7 @@ const loadZip = async (file: File) => {
         // Parse conversations
         const json = await fileEntry.async('string')
         const parsed = JSON.parse(json)
-        conversations.value = Array.isArray(parsed) ? parsed : parsed.items
+        conversations.value = (Array.isArray(parsed) ? parsed : parsed.items).sort((a: Conversation, b: Conversation) => b.update_time - a.update_time)
         selectedChat.value = null
         zipLoaded.value = true
 

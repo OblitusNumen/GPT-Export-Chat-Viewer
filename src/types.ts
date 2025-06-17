@@ -24,6 +24,7 @@ export interface Message {
         metadata?: Record<string, unknown>;
     };
     create_time: number;
+    update_time: number;
     content: MessageContent;
     metadata?: {
         attachments: {
