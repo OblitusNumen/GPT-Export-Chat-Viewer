@@ -1,23 +1,24 @@
 <template>
     <div v-if="messageNode" class="flex flex-col space-y-2 px-4">
         <div
-            v-if="messageNode.message !== null"
-            :class="['message max-w-3xl rounded-xl p-4 text-base whitespace-pre-wrap leading-relaxed',
-                messageNode.message.author.role === 'user'
-                ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
-                : 'self-start bg-gray-100 dark:bg-gray-800 text-black dark:text-white'
-            ]"
-            v-html="renderedMessage"
+                v-if="messageNode.message !== null"
+                :class="[
+                    'message max-w-3xl rounded-xl p-4 text-base leading-relaxed prose dark:prose-invert',
+                    messageNode.message.author.role === 'user'
+                    ? 'self-end bg-green-100 dark:bg-emerald-800 text-black dark:text-white'
+                    : 'self-start text-black dark:text-white w-full'
+                    ]"
+                v-html="renderedMessage"
         />
         <div
-            v-if="parentChildren.length > 1"
-            class="flex items-center justify-center space-x-4 mt-3"
+                v-if="parentChildren.length > 1"
+                class="flex items-center justify-center space-x-4 mt-3"
         >
             <button
-                @click="emit('branchChange', { choice: parentChildren[currentIndex - 1] })"
-                :disabled="messageNode.id === parentChildren[0]"
-                class="chat-nav-btn"
-                aria-label="Previous"
+                    @click="emit('branchChange', { choice: parentChildren[currentIndex - 1] })"
+                    :disabled="messageNode.id === parentChildren[0]"
+                    class="chat-nav-btn"
+                    aria-label="Previous"
             >
                 <ChevronLeftIcon/>
             </button>
@@ -27,10 +28,10 @@
             </span>
 
             <button
-                @click="emit('branchChange', { choice: parentChildren[currentIndex + 1] })"
-                :disabled="messageNode.id === parentChildren[parentChildren.length - 1]"
-                class="chat-nav-btn"
-                aria-label="Next"
+                    @click="emit('branchChange', { choice: parentChildren[currentIndex + 1] })"
+                    :disabled="messageNode.id === parentChildren[parentChildren.length - 1]"
+                    class="chat-nav-btn"
+                    aria-label="Next"
             >
                 <ChevronRightIcon/>
             </button>
@@ -40,13 +41,12 @@
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
-import type {Tokens} from 'marked'
-import {marked, Renderer} from 'marked'
-import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 
 import {ChevronLeftIcon, ChevronRightIcon} from 'lucide-vue-next'
 import type {Message, MessageContent, MessageNode} from '@/types.ts'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
 
 const props = defineProps<{
     messageNode: MessageNode | undefined
@@ -116,47 +116,70 @@ function sanitizeUrl(url: string): string {
 }
 
 function sanitizeText(text: string): string {
-    const div = document.createElement("div")
-    div.textContent = text
-    return div.innerHTML
+    // const div = document.createElement("div")
+    // div.textContent = text
+    // return div.innerHTML
+    return text
 }
+
+const mdRenderer = new MarkdownIt({
+    html: false,
+    linkify: true,
+    typographer: true,
+    highlight(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                return `<pre><code class="hljs ${lang}">${hljs.highlight(code, {language: lang}).value}</code></pre>`
+            } catch (__) {
+            }
+        }
+
+        return `<pre><code class="hljs">${sanitizeText(code)}</code></pre>`
+    },
+})
+
+const md = new MarkdownIt({
+    highlight: null,
+})
 
 async function parseMarked(content: string, markdown: boolean): Promise<string> {
     if (!markdown) return sanitizeText(content)
-
-    const renderer = new Renderer()
-
-    renderer.code = ({text, lang}: Tokens.Code): string => {
-        const validLang = lang && hljs.getLanguage(lang)
-        const highlighted = validLang
-            ? hljs.highlight(text, {language: lang}).value
-            : hljs.highlightAuto(text).value
-
-        return `<pre><code class="hljs ${lang ?? ''}">${highlighted}</code></pre>`
-    }
-
-    marked.use({renderer})
-
-    return marked.parse(content)
+    return md.render(content)
 }
+
+md.renderer.rules.code_inline = (tokens, idx) => {
+    const content = tokens[idx].content
+    return `<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">${content}</code>`
+}
+
+
+watch(
+    () => props.messageNode?.message,
+    async (newMessage) => {
+        renderedMessage.value = newMessage ? await renderMessage(newMessage) : ''
+        console.log('[DEBUG] renderedMessage:', renderedMessage.value)
+    },
+    {immediate: true}
+)
 
 </script>
 
 <style scoped>
-.message * {
-    overflow-wrap: break-word;
-    word-break: break-word;
+
+.prose code {
+    background-color: #f3f4f6; /* light gray */
+    color: #1f2937; /* Tailwind gray-800 */
+    padding: 0.15em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.95em;
+    border: 1px solid #d1d5db; /* Tailwind gray-300 */
+    font-weight: 500;
 }
 
-pre {
-    background-color: #0d1117;
-    color: #c9d1d9;
-    padding: 1em;
-    border-radius: 0.5rem;
-    margin-top: 1rem;
-    overflow-x: auto;
-    font-size: 0.875rem;
-    line-height: 1.5;
+.dark .prose code {
+    background-color: #1f2937; /* dark gray */
+    color: #f9fafb; /* near white */
+    border: 1px solid #4b5563; /* Tailwind gray-600 */
 }
 
 code {
