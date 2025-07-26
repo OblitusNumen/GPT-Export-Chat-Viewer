@@ -3,37 +3,42 @@
 /* Optional: Custom link styling */
 a,
 .green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+    text-decoration: none;
+    color: hsla(160, 100%, 37%, 1);
+    transition: 0.4s;
+    padding: 3px;
 }
 
 @media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+    a:hover {
+        background-color: hsla(160, 100%, 37%, 0.2);
+    }
 }
 
 /* For WebKit-based browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+    background: #f1f1f1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #a0aec0;
-  border-radius: 4px;
+    background-color: #a0aec0;
+    border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #2d3748;
+    background: #2d3748;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background-color: #4a5568;
+    background-color: #4a5568;
+}
+
+.prose code::before,
+.prose code::after {
+    content: none !important;
 }

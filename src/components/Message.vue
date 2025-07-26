@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
-import 'highlight.js/styles/github-dark.css'
+// import 'highlight.js/styles/github.css'
 
 import {ChevronLeftIcon, ChevronRightIcon} from 'lucide-vue-next'
 import type {Message, MessageContent, MessageNode} from '@/types.ts'
@@ -59,6 +59,42 @@ const emit = defineEmits<{
 }>()
 
 const renderedMessage = ref('')
+
+const md = new MarkdownIt({
+    html: false,
+    linkify: true,
+    typographer: true,
+    highlight(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                const highlighted = hljs.highlight(code, {language: lang}).value
+                return `
+                    <div class="code-block-wrapper relative">
+                      <div class="language-label absolute top-1 left-2 text-xs text-gray-400 uppercase font-mono">${lang}</div>
+                      <pre><code class="hljs ${lang}">${highlighted}</code></pre>
+                    </div>
+                `
+            } catch (_) {
+            }
+        }
+
+        return `
+            <div class="code-block-wrapper">
+              <pre><code class="hljs">${sanitizeText(code)}</code></pre>
+            </div>
+        `
+    }
+})
+
+async function parseMarked(content: string, markdown: boolean): Promise<string> {
+    if (!markdown) return sanitizeText(content)
+    return md.render(content)
+}
+
+md.renderer.rules.code_inline = (tokens, idx) => {
+    const content = tokens[idx].content
+    return `<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">${content}</code>`
+}
 
 const currentIndex = computed(() => {
     if (!props.messageNode) return 0
@@ -122,50 +158,9 @@ function sanitizeText(text: string): string {
     return text
 }
 
-const mdRenderer = new MarkdownIt({
-    html: false,
-    linkify: true,
-    typographer: true,
-    highlight(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-            try {
-                return `<pre><code class="hljs ${lang}">${hljs.highlight(code, {language: lang}).value}</code></pre>`
-            } catch (__) {
-            }
-        }
-
-        return `<pre><code class="hljs">${sanitizeText(code)}</code></pre>`
-    },
-})
-
-const md = new MarkdownIt({
-    highlight: null,
-})
-
-async function parseMarked(content: string, markdown: boolean): Promise<string> {
-    if (!markdown) return sanitizeText(content)
-    return md.render(content)
-}
-
-md.renderer.rules.code_inline = (tokens, idx) => {
-    const content = tokens[idx].content
-    return `<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">${content}</code>`
-}
-
-
-watch(
-    () => props.messageNode?.message,
-    async (newMessage) => {
-        renderedMessage.value = newMessage ? await renderMessage(newMessage) : ''
-        console.log('[DEBUG] renderedMessage:', renderedMessage.value)
-    },
-    {immediate: true}
-)
-
 </script>
 
 <style scoped>
-
 .prose code {
     background-color: #f3f4f6; /* light gray */
     color: #1f2937; /* Tailwind gray-800 */
@@ -180,6 +175,35 @@ watch(
     background-color: #1f2937; /* dark gray */
     color: #f9fafb; /* near white */
     border: 1px solid #4b5563; /* Tailwind gray-600 */
+}
+
+.code-block-wrapper {
+    margin: 0.5rem 0; /* space above/below block */
+    border-radius: 0.375rem;
+    overflow-x: auto;
+}
+
+.code-block-wrapper pre {
+    margin: 0;
+    padding: 0.25rem 0.5rem; /* 4px vertical, 8px horizontal */
+    background: transparent !important; /* remove hljs background to control with theme */
+    border-radius: 0.375rem;
+    line-height: 1.3;
+    font-size: 0.9rem;
+    font-family: 'Fira Code', monospace;
+    overflow-x: auto;
+    white-space: pre-wrap; /* allow wrapping, optional */
+    word-break: break-word;
+}
+
+.code-block-wrapper code {
+    padding: 0 !important; /* remove inline padding */
+    background: transparent !important;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    display: block;
+    white-space: pre-wrap;
 }
 
 code {
