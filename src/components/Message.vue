@@ -41,7 +41,8 @@
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
-// import 'highlight.js/styles/github.css'
+import 'highlight.js/styles/github-dark.css'
+
 
 import {ChevronLeftIcon, ChevronRightIcon} from 'lucide-vue-next'
 import type {Message, MessageContent, MessageNode} from '@/types.ts'
@@ -64,36 +65,46 @@ const md = new MarkdownIt({
     html: false,
     linkify: true,
     typographer: true,
-    highlight(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-            try {
-                const highlighted = hljs.highlight(code, {language: lang}).value
-                return `
-                    <div class="code-block-wrapper relative">
-                      <div class="language-label absolute top-1 left-2 text-xs text-gray-400 uppercase font-mono">${lang}</div>
-                      <pre><code class="hljs ${lang}">${highlighted}</code></pre>
-                    </div>
-                `
-            } catch (_) {
-            }
-        }
-
-        return `
-            <div class="code-block-wrapper">
-              <pre><code class="hljs">${sanitizeText(code)}</code></pre>
-            </div>
-        `
-    }
 })
 
-async function parseMarked(content: string, markdown: boolean): Promise<string> {
-    if (!markdown) return sanitizeText(content)
-    return md.render(content)
+md.renderer.rules.fence = (tokens, idx) => {
+    const token = tokens[idx]
+    const code = token.content.trim()
+    const lang = token.info.trim().split(/\s+/g)[0] || 'text'
+    const validLang = hljs.getLanguage(lang)
+    const highlighted = validLang
+        ? hljs.highlight(code, { language: lang }).value
+        : md.utils.escapeHtml(code)
+
+    return `
+    <div class="code-block bg-gray-100 dark:bg-gray-800 rounded text-sm">
+      <div class="code-header">
+        <span class="code-lang">${lang}</span>
+        <button class="copy-btn" onclick="copyToClipboard(this)">📋</button>
+      </div>
+      <pre><code class="hljs language-${lang}">${highlighted}</code></pre>
+    </div>
+  `.trim()
 }
 
 md.renderer.rules.code_inline = (tokens, idx) => {
     const content = tokens[idx].content
     return `<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">${content}</code>`
+}
+
+window.copyToClipboard = (btn: any) => {
+    const code = btn.closest('.code-block')?.querySelector('code')
+    if (!code) return
+    const text = code.innerText
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '✅'
+        setTimeout(() => (btn.textContent = '📋'), 1500)
+    })
+}
+
+async function parseMarked(content: string, markdown: boolean): Promise<string> {
+    if (!markdown) return sanitizeText(content)
+    return md.render(content)
 }
 
 const currentIndex = computed(() => {
@@ -177,35 +188,6 @@ function sanitizeText(text: string): string {
     border: 1px solid #4b5563; /* Tailwind gray-600 */
 }
 
-.code-block-wrapper {
-    margin: 0.5rem 0; /* space above/below block */
-    border-radius: 0.375rem;
-    overflow-x: auto;
-}
-
-.code-block-wrapper pre {
-    margin: 0;
-    padding: 0.25rem 0.5rem; /* 4px vertical, 8px horizontal */
-    background: transparent !important; /* remove hljs background to control with theme */
-    border-radius: 0.375rem;
-    line-height: 1.3;
-    font-size: 0.9rem;
-    font-family: 'Fira Code', monospace;
-    overflow-x: auto;
-    white-space: pre-wrap; /* allow wrapping, optional */
-    word-break: break-word;
-}
-
-.code-block-wrapper code {
-    padding: 0 !important; /* remove inline padding */
-    background: transparent !important;
-    font-family: 'Fira Code', monospace;
-    font-size: 0.9rem;
-    line-height: 1.3;
-    display: block;
-    white-space: pre-wrap;
-}
-
 code {
     font-family: 'Fira Code', monospace;
 }
@@ -213,4 +195,32 @@ code {
 .chat-nav-btn {
     @apply p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition dark:bg-gray-700 dark:hover:bg-gray-600;
 }
+
+:deep(.code-header) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151; /* Tailwind gray-700 */
+}
+
+.dark :deep(.code-header) {
+    color: #d1d5db; /* Tailwind gray-300 */
+}
+
+:deep(pre) {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0;
+    overflow-x: auto;
+}
+
+:deep(pre code) {
+    background: transparent !important;
+    display: block;
+    padding: 0.5rem;
+}
+
 </style>

@@ -1,5 +1,11 @@
 export type ConversationsFile = Conversation[];
 
+declare global {
+  interface Window {
+    copyToClipboard: (el: HTMLElement) => void
+  }
+}
+
 export interface Conversation {
     id: string;
     title: string;
