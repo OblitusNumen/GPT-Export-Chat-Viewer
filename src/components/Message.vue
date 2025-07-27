@@ -169,6 +169,34 @@ function sanitizeText(text: string): string {
     return text
 }
 
+import { onMounted } from 'vue'
+
+function applyHljsTheme(dark: boolean) {
+    const id = 'hljs-theme'
+    let styleLink = document.getElementById(id) as HTMLLinkElement | null
+
+    if (!styleLink) {
+        styleLink = document.createElement('link')
+        styleLink.id = id
+        styleLink.rel = 'stylesheet'
+        document.head.appendChild(styleLink)
+    }
+
+    styleLink.href = dark
+        ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'
+        : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
+}
+
+onMounted(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    applyHljsTheme(mediaQuery.matches)
+
+    mediaQuery.addEventListener('change', (e) => {
+        applyHljsTheme(e.matches)
+    })
+})
+
 </script>
 
 <style scoped>
