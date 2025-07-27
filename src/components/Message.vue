@@ -79,7 +79,7 @@ md.renderer.rules.fence = (tokens, idx) => {
     return `
     <div class="code-block bg-gray-100 dark:bg-gray-800 rounded text-sm">
       <div class="code-header">
-        <span class="code-lang">${lang}</span>
+        <span class="code-lang bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-md text-xs font-semibold">${lang}</span>
         <button class="copy-btn" onclick="copyToClipboard(this)">📋</button>
       </div>
       <pre><code class="hljs language-${lang}">${highlighted}</code></pre>
