@@ -166,7 +166,8 @@ function sanitizeText(text: string): string {
     // const div = document.createElement("div")
     // div.textContent = text
     // return div.innerHTML
-    return text
+    return `<div style="white-space: pre-wrap;">${text}</div>`
+    // return text.replace(/ {2}/g, '&nbsp;&nbsp;').replace(/\n/g, '<br>');
 }
 
 import { onMounted } from 'vue'
