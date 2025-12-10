@@ -31,3 +31,13 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## TODO
+
+- fix formulas
+
+- fix displaying json, fix system messages
+
+- scroll to top mb
+
+- escape bubbles, align centered
