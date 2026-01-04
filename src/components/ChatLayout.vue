@@ -233,8 +233,6 @@ const loadZip = async (file: File) => {
         const zip = await JSZip.loadAsync(file)
 
         //is grok
-        ///ttl/30d/export_data/c0851be8-c98c-4d12-83d2-ae559089d400/prod-grok-backend.json
-
         const grokSave = zip.file(new RegExp(/^(.*\/prod-grok-backend\.json)$/i))
         if (grokSave.length == 1) {
             // Parse conversations
