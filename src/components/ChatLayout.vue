@@ -126,7 +126,7 @@
 import {computed, onMounted, ref} from 'vue'
 import JSZip from 'jszip'
 import ChatView from '@/components/ChatView.vue'
-import type {Conversation} from '@/types.ts'
+import type {Conversation, ConversationsFile, Message, MessageContent, MessageNode} from '@/types.ts'
 
 const showSidebar = ref(true)
 const conversations = ref<Conversation[]>([])
@@ -231,6 +231,79 @@ const resolveAssetPath = (prefix: string): string | undefined => {
 const loadZip = async (file: File) => {
     try {
         const zip = await JSZip.loadAsync(file)
+
+        //is grok
+        ///ttl/30d/export_data/c0851be8-c98c-4d12-83d2-ae559089d400/prod-grok-backend.json
+
+        const grokSave = zip.file(new RegExp(/^(.*\/prod-grok-backend\.json)$/i))
+        if (grokSave.length == 1) {
+            // Parse conversations
+            const json = await grokSave[0].async('string')
+            const parsed = JSON.parse(json)
+
+
+            const transformed: ConversationsFile = []
+            for (let convo of parsed.conversations) {
+                const mapping: Record<string, MessageNode> = {}
+                for (let response of convo.responses) {
+                    const mc: MessageContent = {
+                        content_type: "text",
+                        parts: [response.response.message]
+                    }
+                    let role = response.response.sender;
+                    switch (role) {
+                        case "human":
+                            role = "user"
+                    }
+                    const message: Message = {
+                        id: response.response["_id"],
+                        author: {
+                            role: role,
+                        },
+                        create_time: response.response.create_time["$date"]["$numberLong"] / 1000.,
+                        update_time: response.response.create_time["$date"]["$numberLong"] / 1000.,
+                        content: mc,
+                    }
+                    const response_parent = response.response["parent_response_id"];
+                    const messageNode: MessageNode = {
+                        children: [],
+                        id: response.response["_id"],
+                        message: message,
+                        parent: response_parent ? response_parent : null
+                    }
+                    mapping[messageNode.id] = messageNode
+                }
+                for (let mappingKey in mapping) {
+                    let node = mapping[mappingKey]
+                    if (node.parent) {
+                        mapping[node.parent].children.push(node.id)
+                    }
+                }
+                let currentNode: MessageNode | null = null
+                for (let mappingKey in mapping) {
+                    let node = mapping[mappingKey]
+                    if (node.children.length == 0 && (!currentNode || node.message?.create_time! > currentNode.message!.create_time)) {
+                        currentNode = node
+                    }
+                }
+
+                const conversationT: Conversation = {
+                    id: convo.conversation.id,
+                    title: convo.conversation.title,
+                    create_time: new Date(convo.conversation.create_time).getTime() / 1000.,
+                    update_time: new Date(convo.conversation.modify_time).getTime() / 1000.,
+                    mapping: mapping,
+                    current_node: currentNode?.id!,
+                }
+                transformed.push(conversationT)
+            }
+
+            conversations.value = transformed.sort((a: Conversation, b: Conversation) => b.update_time - a.update_time)
+            selectedChat.value = null
+            zipLoaded.value = true
+            console.log(conversations.value)
+            return
+        }
 
         // Try to locate conversations.json
         const fileEntry = zip.file('conversations.json')
